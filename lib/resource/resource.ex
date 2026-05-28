@@ -154,6 +154,13 @@ defmodule AshPaperTrail.Resource do
         doc:
           "A name to use for this resource in the `version_resource_identifier`. Defaults to `Ash.Resource.Info.short_name/1`."
       ],
+      version_resource: [
+        type: :atom,
+        doc: """
+        Module for the auto-generated version resource. Defaults to `SourceResource.Version`.
+        Set when that name is already used by another resource in your app.
+        """
+      ],
       version_extensions: [
         type: :keyword_list,
         default: [],

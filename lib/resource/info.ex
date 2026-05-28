@@ -107,13 +107,17 @@ defmodule AshPaperTrail.Resource.Info do
     Spark.Dsl.Extension.get_opt(resource, [:paper_trail], :version_extensions, [])
   end
 
-  @spec version_resource(Spark.Dsl.t() | Ash.Resource.t()) :: Ash.Resource.t()
+  @spec version_resource(Spark.Dsl.t() | Ash.Resource.t()) :: module
   def version_resource(resource) do
-    if is_atom(resource) do
-      Module.concat([resource, Version])
-    else
-      Module.concat([Spark.Dsl.Extension.get_persisted(resource, :module), Version])
-    end
+    source_module =
+      if is_atom(resource) do
+        resource
+      else
+        Spark.Dsl.Extension.get_persisted(resource, :module)
+      end
+
+    Spark.Dsl.Extension.get_opt(resource, [:paper_trail], :version_resource) ||
+      Module.concat([source_module, Version])
   end
 
   @spec public_timestamps?(Spark.Dsl.t() | Ash.Resource.t()) :: boolean
