@@ -10,38 +10,7 @@ defmodule AshPaperTrailTest do
   alias AshPaperTrail.Test.{Accounts, Articles, Posts}
 
   defp sort_versions(versions) do
-    action_order = %{create: 0, publish: 1, update: 2, destroy: 3}
-    type_order = %{create: 0, update: 1, destroy: 2}
-
-    Enum.sort(versions, fn a, b ->
-      cond do
-        a.version_inserted_at != b.version_inserted_at ->
-          DateTime.compare(a.version_inserted_at, b.version_inserted_at) == :lt
-
-        a.version_action_type != b.version_action_type ->
-          (type_order[a.version_action_type] || 99) < (type_order[b.version_action_type] || 99)
-
-        true ->
-          name_a = Map.get(a, :version_action_name, a.version_action_type)
-          name_b = Map.get(b, :version_action_name, b.version_action_type)
-          order_a = Map.get(action_order, name_a, 99)
-          order_b = Map.get(action_order, name_b, 99)
-
-          if order_a != order_b do
-            order_a < order_b
-          else
-            # Same type and name (e.g. two creates) - use body then id
-            body_a = Map.get(a, :body, "") |> to_string()
-            body_b = Map.get(b, :body, "") |> to_string()
-
-            if body_a != body_b do
-              body_a < body_b
-            else
-              to_string(a.id) < to_string(b.id)
-            end
-          end
-      end
-    end)
+    Enum.sort_by(versions, & &1.id)
   end
 
   @valid_attrs %{
@@ -672,8 +641,8 @@ defmodule AshPaperTrailTest do
   end
 
   describe ":primary_key_type options" do
-    test ":id as as UUID" do
-      assert AshPaperTrail.Resource.Info.primary_key_type(Posts.Post) == :uuid
+    test "Posts.Post :id as UUID v7" do
+      assert AshPaperTrail.Resource.Info.primary_key_type(Posts.Post) == :uuid_v7
 
       post = Posts.Post.create!(@valid_attrs, tenant: "acme")
       Posts.Post.update!(post, %{subject: "new subject"}, tenant: "acme")
@@ -682,12 +651,12 @@ defmodule AshPaperTrailTest do
         Ash.read!(Posts.Post.Version, tenant: "acme")
         |> Enum.filter(&(&1.version_action_type == :update))
 
-      uuid = updated_version.id
-      assert {:ok, binary_uuid} = Ash.Type.dump_to_native(Ash.Type.UUID, uuid)
-      assert {:ok, ^uuid} = Ash.Type.cast_input(Ash.Type.UUID, binary_uuid)
+      uuid_v7 = updated_version.id
+      assert {:ok, binary_uuid_v7} = Ash.Type.dump_to_native(Ash.Type.UUID, uuid_v7)
+      assert {:ok, ^uuid_v7} = Ash.Type.cast_input(Ash.Type.UUID, binary_uuid_v7)
     end
 
-    test ":id as UUID v7" do
+    test "Accounts.User :id as UUID v7" do
       assert AshPaperTrail.Resource.Info.primary_key_type(Accounts.User) == :uuid_v7
 
       user = Accounts.User.create!(%{name: "name"})
