@@ -1203,4 +1203,42 @@ defmodule AshPaperTrailTest do
       assert :client_ip in attributes
     end
   end
+
+  describe "composite primary keys" do
+    test "creates and destroys versions for composite primary key resources" do
+      team_id = Ash.UUID.generate()
+      user_id = Ash.UUID.generate()
+
+      assert member = Posts.TeamMember.create!(%{team_id: team_id, user_id: user_id})
+
+      assert [
+               %{
+                 version_action_type: :create,
+                 version_source_team_id: ^team_id,
+                 version_source_user_id: ^user_id
+               }
+             ] =
+               member
+               |> Ash.load!(:paper_trail_versions)
+               |> Map.get(:paper_trail_versions)
+
+      assert :ok = Posts.TeamMember.destroy!(member)
+
+      assert [
+               %{
+                 version_action_type: :create,
+                 version_source_team_id: ^team_id,
+                 version_source_user_id: ^user_id
+               },
+               %{
+                 version_action_type: :destroy,
+                 version_source_team_id: ^team_id,
+                 version_source_user_id: ^user_id
+               }
+             ] =
+               Posts.TeamMember.Version
+               |> Ash.read!()
+               |> sort_versions()
+    end
+  end
 end

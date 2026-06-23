@@ -58,4 +58,62 @@ defmodule AshPaperTrail.Resource.Transformers.CreateVersionResourceTest do
              )
     end
   end
+
+  defmodule TeamMember do
+    use Ash.Resource,
+      domain: AshPaperTrail.Resource.Transformers.CreateVersionResourceTest.CompositeDomain,
+      data_layer: Ash.DataLayer.Ets,
+      extensions: [AshPaperTrail.Resource],
+      validate_domain_inclusion?: false
+
+    ets do
+      private? true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:create, :read, :destroy]
+    end
+
+    attributes do
+      attribute :team_id, :uuid do
+        primary_key? true
+        allow_nil? false
+        public? true
+      end
+
+      attribute :user_id, :uuid do
+        primary_key? true
+        allow_nil? false
+        public? true
+      end
+    end
+  end
+
+  defmodule CompositeDomain do
+    use Ash.Domain, extensions: [AshPaperTrail.Domain], validate_config_inclusion?: false
+
+    resources do
+      resource TeamMember
+      resource TeamMember.Version
+    end
+  end
+
+  describe "composite primary keys" do
+    test "creates version source attributes for each primary key component" do
+      assert Ash.Resource.Info.attribute(TeamMember.Version, :version_source_team_id)
+      assert Ash.Resource.Info.attribute(TeamMember.Version, :version_source_user_id)
+      refute Ash.Resource.Info.attribute(TeamMember.Version, :version_source_id)
+    end
+
+    test "relates version to source with has_one and paper_trail_versions with filter" do
+      version_source = Ash.Resource.Info.relationship(TeamMember.Version, :version_source)
+      assert version_source.type == :has_one
+      assert version_source.no_attributes?
+
+      paper_trail_versions = Ash.Resource.Info.relationship(TeamMember, :paper_trail_versions)
+      assert paper_trail_versions.type == :has_many
+      assert paper_trail_versions.no_attributes?
+    end
+  end
 end
