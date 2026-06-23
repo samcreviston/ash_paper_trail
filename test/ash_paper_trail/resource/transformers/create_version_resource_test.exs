@@ -59,61 +59,39 @@ defmodule AshPaperTrail.Resource.Transformers.CreateVersionResourceTest do
     end
   end
 
-  defmodule TeamMember do
-    use Ash.Resource,
-      domain: AshPaperTrail.Resource.Transformers.CreateVersionResourceTest.CompositeDomain,
-      data_layer: Ash.DataLayer.Ets,
-      extensions: [AshPaperTrail.Resource],
-      validate_domain_inclusion?: false
+  defp assert_composite_pk_support(source, version, source_keys) do
+    version_keys = AshPaperTrail.Resource.PrimaryKey.version_source_attribute_names(source)
 
-    ets do
-      private? true
+    assert length(version_keys) == length(source_keys)
+    refute :version_source_id in version_keys
+
+    for {source_key, version_key} <- Enum.zip(source_keys, version_keys) do
+      assert version_key ==
+               AshPaperTrail.Resource.PrimaryKey.version_source_attribute_name(source, source_key)
+
+      assert Ash.Resource.Info.attribute(version, version_key)
     end
 
-    actions do
-      default_accept :*
-      defaults [:create, :read, :destroy]
-    end
+    assert %{type: :has_one, no_attributes?: true} =
+             Ash.Resource.Info.relationship(version, :version_source)
 
-    attributes do
-      attribute :team_id, :uuid do
-        primary_key? true
-        allow_nil? false
-        public? true
-      end
+    assert %{type: :has_many, no_attributes?: true} =
+             Ash.Resource.Info.relationship(source, :paper_trail_versions)
 
-      attribute :user_id, :uuid do
-        primary_key? true
-        allow_nil? false
-        public? true
-      end
-    end
-  end
+    result = Map.new(source_keys, &{&1, Ash.UUID.generate()})
 
-  defmodule CompositeDomain do
-    use Ash.Domain, extensions: [AshPaperTrail.Domain], validate_config_inclusion?: false
-
-    resources do
-      resource TeamMember
-      resource TeamMember.Version
-    end
+    assert AshPaperTrail.Resource.PrimaryKey.version_source_input(result, source) ==
+             Map.new(Enum.zip(source_keys, version_keys), fn {source_key, version_key} ->
+               {version_key, result[source_key]}
+             end)
   end
 
   describe "composite primary keys" do
-    test "creates version source attributes for each primary key component" do
-      assert Ash.Resource.Info.attribute(TeamMember.Version, :version_source_team_id)
-      assert Ash.Resource.Info.attribute(TeamMember.Version, :version_source_user_id)
-      refute Ash.Resource.Info.attribute(TeamMember.Version, :version_source_id)
-    end
+    test "supports ten primary key components" do
+      source = AshPaperTrail.Test.Posts.TeamMember
+      version = AshPaperTrail.Test.Posts.TeamMember.Version
 
-    test "relates version to source with has_one and paper_trail_versions with filter" do
-      version_source = Ash.Resource.Info.relationship(TeamMember.Version, :version_source)
-      assert version_source.type == :has_one
-      assert version_source.no_attributes?
-
-      paper_trail_versions = Ash.Resource.Info.relationship(TeamMember, :paper_trail_versions)
-      assert paper_trail_versions.type == :has_many
-      assert paper_trail_versions.no_attributes?
+      assert_composite_pk_support(source, version, AshPaperTrail.Test.Posts.TeamMember.composite_keys())
     end
   end
 end

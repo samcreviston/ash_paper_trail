@@ -1206,39 +1206,38 @@ defmodule AshPaperTrailTest do
 
   describe "composite primary keys" do
     test "creates and destroys versions for composite primary key resources" do
-      team_id = Ash.UUID.generate()
-      user_id = Ash.UUID.generate()
+      attrs =
+        Map.new(Posts.TeamMember.composite_keys(), fn key ->
+          {key, Ash.UUID.generate()}
+        end)
 
-      assert member = Posts.TeamMember.create!(%{team_id: team_id, user_id: user_id})
+      assert member = Posts.TeamMember.create!(attrs)
 
-      assert [
-               %{
-                 version_action_type: :create,
-                 version_source_team_id: ^team_id,
-                 version_source_user_id: ^user_id
-               }
-             ] =
+      version_source_attrs =
+        Map.new(Posts.TeamMember.composite_keys(), fn key ->
+          {String.to_atom("version_source_#{key}"), attrs[key]}
+        end)
+
+      assert [create_version] =
                member
                |> Ash.load!(:paper_trail_versions)
                |> Map.get(:paper_trail_versions)
 
+      assert Map.take(create_version, Map.keys(version_source_attrs) ++ [:version_action_type]) ==
+               Map.merge(%{version_action_type: :create}, version_source_attrs)
+
       assert :ok = Posts.TeamMember.destroy!(member)
 
-      assert [
-               %{
-                 version_action_type: :create,
-                 version_source_team_id: ^team_id,
-                 version_source_user_id: ^user_id
-               },
-               %{
-                 version_action_type: :destroy,
-                 version_source_team_id: ^team_id,
-                 version_source_user_id: ^user_id
-               }
-             ] =
+      assert [create_version, destroy_version] =
                Posts.TeamMember.Version
                |> Ash.read!()
                |> sort_versions()
+
+      assert Map.take(create_version, Map.keys(version_source_attrs) ++ [:version_action_type]) ==
+               Map.merge(%{version_action_type: :create}, version_source_attrs)
+
+      assert Map.take(destroy_version, Map.keys(version_source_attrs) ++ [:version_action_type]) ==
+               Map.merge(%{version_action_type: :destroy}, version_source_attrs)
     end
   end
 end

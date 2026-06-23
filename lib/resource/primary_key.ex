@@ -20,7 +20,8 @@ defmodule AshPaperTrail.Resource.PrimaryKey do
     resource |> Ash.Resource.Info.primary_key() |> length() > 1
   end
 
-  # Returns the version-side attribute name for a given source PK — :version_source_id for single PK, :version_source_<name> for composite.
+  # Returns the version-side attribute name for a given source PK — :version_source_id for
+  # single PK, :version_source_<name> for composite.
   # sobelow_skip ["DOS.StringToAtom"]
   def version_source_attribute_name(resource, source_key) do
     case Ash.Resource.Info.primary_key(resource) do
@@ -36,7 +37,8 @@ defmodule AshPaperTrail.Resource.PrimaryKey do
     |> Enum.map(&version_source_attribute_name(resource, &1))
   end
 
-  # Returns {source_pk, version_attr, source_attribute} tuples, including type and constraints from the source attribute.
+  # Returns {source_pk, version_attr, source_attribute} tuples, including type and
+  # constraints from the source attribute.
   def mappings(resource) do
     resource
     |> pairs()
@@ -45,7 +47,8 @@ defmodule AshPaperTrail.Resource.PrimaryKey do
     end)
   end
 
-  # Builds a map of version attribute names → values from a source record, for use when creating a version at runtime.
+  # Builds a map of version attribute names → values from a source record,
+  # for use when creating a version at runtime.
   def version_source_input(result, resource) do
     Map.new(pairs(resource), fn {source_key, version_attr} ->
       {version_attr, Map.get(result, source_key)}
@@ -66,7 +69,8 @@ defmodule AshPaperTrail.Resource.PrimaryKey do
     |> build_filter()
   end
 
-  # Returns quoted AST for the source-side filter (e.g. version_source_team_id == parent(team_id)), used when embedding expr(...) in generated code.
+  # Returns quoted AST for the source-side filter (e.g. version_source_team_id == parent(team_id)),
+  # used when embedding expr(...) in generated code.
   def source_versions_filter_ast(resource) do
     resource
     |> pairs()
@@ -78,7 +82,8 @@ defmodule AshPaperTrail.Resource.PrimaryKey do
     |> combine_and()
   end
 
-  # Returns quoted AST for the version-side filter (e.g. team_id == parent(version_source_team_id)), used when embedding expr(...) in generated code.
+  # Returns quoted AST for the version-side filter (e.g. team_id == parent(version_source_team_id)),
+  # used when embedding expr(...) in generated code.
   def version_source_filter_ast(resource) do
     resource
     |> pairs()

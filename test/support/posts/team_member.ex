@@ -4,6 +4,10 @@
 
 defmodule AshPaperTrail.Test.Posts.TeamMember do
   @moduledoc false
+
+  @composite_key_count 10
+  @composite_keys for(i <- 1..@composite_key_count, do: String.to_atom("key_#{i}"))
+
   use Ash.Resource,
     domain: AshPaperTrail.Test.Posts.Domain,
     data_layer: Ash.DataLayer.Ets,
@@ -31,16 +35,14 @@ defmodule AshPaperTrail.Test.Posts.TeamMember do
   end
 
   attributes do
-    attribute :team_id, :uuid do
-      primary_key? true
-      allow_nil? false
-      public? true
-    end
-
-    attribute :user_id, :uuid do
-      primary_key? true
-      allow_nil? false
-      public? true
+    for key <- @composite_keys do
+      attribute key, :uuid do
+        primary_key? true
+        allow_nil? false
+        public? true
+      end
     end
   end
+
+  def composite_keys, do: @composite_keys
 end
